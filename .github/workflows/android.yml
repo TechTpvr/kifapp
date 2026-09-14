@@ -3,7 +3,8 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    tags: ['v*']
+    tags:
+      - 'v*'
 
 jobs:
   android:
@@ -13,22 +14,34 @@ jobs:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - run: npm install
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
-      - run: npx capacitor-assets generate --iconPath logo-app.png || true
+      - name: Install dependencies
+        run: npm install
 
-      - run: npm run build
+      - name: Build web app
+        run: npm run build
 
-      - run: npx cap add android
+      - name: Add Android platform
+        run: npx cap add android
 
-      - run: npx cap sync android
+      - name: Generate app icons
+        run: npx capacitor-assets generate --iconPath logo-app.png || true
+
+      - name: Sync Capacitor
+        run: npx cap sync android
 
       - name: Decode Android keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
@@ -43,20 +56,30 @@ jobs:
           KIFNET_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KIFNET_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KIFNET_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: python3 ../scripts/configure-android-signing.py
+        run: |
+          python3 ../scripts/configure-android-signing.py
 
       - name: Build signed release APK
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Build debug APK when signing secrets are not configured
+      - name: Build debug APK
         if: env.ANDROID_KEYSTORE_BASE64 == ''
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Find APK
+        run: |
+          find android/app/build/outputs/apk -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: kifnet-android
           path: android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
