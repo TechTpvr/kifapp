@@ -1,0 +1,11 @@
+{
+  "version": "8.0.0",
+  "versionCode": 8,
+  "minimumVersionCode": 8,
+  "forceUpdate": true,
+  "title": "به‌روزرسانی کیف‌نت",
+  "message": "برای ادامه استفاده از کیف‌نت، نسخه جدید را نصب کنید.",
+  "androidUrl": "https://github.com/techtpvr/Kif/releases/latest",
+  "iosUrl": "https://github.com/techtpvr/Kif/releases/latest",
+  "webUrl": "https://techtpvr.github.io/Kif/"
+}
