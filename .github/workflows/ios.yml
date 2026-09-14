@@ -1,0 +1,34 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npx capacitor-assets generate --iconPath logo-app.png || true
+      - run: npm run build
+      - run: npx cap add ios
+      - run: npx cap sync ios
+
+      # بدون certificate/provisioning profile اپل، فقط پروژه iOS ساخته می‌شود.
+      - name: Install CocoaPods
+        working-directory: ios/App
+        run: pod install
+      - name: Archive unsigned iOS project
+        working-directory: ios/App
+        run: xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath "$RUNNER_TEMP/KifNet.xcarchive" archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+      - name: Upload iOS archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: kifnet-ios-archive
+          path: ${{ runner.temp }}/KifNet.xcarchive
