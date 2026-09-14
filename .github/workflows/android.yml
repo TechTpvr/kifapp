@@ -8,25 +8,35 @@ on:
 jobs:
   android:
     runs-on: ubuntu-latest
+
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
       - run: npm install
+
       - run: npx capacitor-assets generate --iconPath logo-app.png || true
+
       - run: npm run build
+
       - run: npx cap add android
+
       - run: npx cap sync android
 
-      # برای نصب امن، این مسیر با keystore خودتان APK امضاشده می‌سازد.
       - name: Decode Android keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/kifnet-release.jks"
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kifnet-release.jks"
 
       - name: Configure Android release signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
         working-directory: android
         env:
           KIFNET_KEYSTORE_PATH: ${{ runner.temp }}/kifnet-release.jks
@@ -36,12 +46,12 @@ jobs:
         run: python3 ../scripts/configure-android-signing.py
 
       - name: Build signed release APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
         working-directory: android
         run: ./gradlew assembleRelease
 
       - name: Build debug APK when signing secrets are not configured
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
+        if: env.ANDROID_KEYSTORE_BASE64 == ''
         working-directory: android
         run: ./gradlew assembleDebug
 
